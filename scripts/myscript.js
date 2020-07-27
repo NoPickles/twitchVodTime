@@ -64,7 +64,8 @@ function getTwitchID(name){
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'sphrze7vu0w52xj352puzh4q1covnzv'
+            'Client-ID':'sphrze7vu0w52xj352puzh4q1covnzv',
+            'Accept'   : 'application/vnd.twitchtv.v5+json'
         },
         async: true,
         dataType: "json",
@@ -87,7 +88,7 @@ function getVodData(channel){
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'sphrze7vu0w52xj352puzh4q1covnzv'
+            'Client-ID':'sphrze7vu0w52xj352puzh4q1covnzv',
         },
         async: true,
         dataType: "json",
@@ -101,6 +102,31 @@ function getVodData(channel){
     });
 };
 
+function getAuthorization(){
+
+    let url = "https://id.twitch.tv/oauth2/authorize";
+
+    $.ajax({
+        type:"GET",
+        url:url,
+        headers: {
+            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f',
+            'response_type':'code',
+            'redirect_uri':'file:///C:/Users/torre/Documents/webdev/twitchVodinker/twitchVodTime/index.html',
+
+        },
+        async: true,
+        dataType: "json",
+        success: function(data){
+            console.log(data);
+        },
+        error: function(errorMessage){
+            alert("not work lol");
+        }
+    });
+    
+};
+
 $('#submit').click(function(){
     //TODO convert time to something less dumb
 
@@ -108,6 +134,13 @@ $('#submit').click(function(){
 
     getTwitchID(twitchChannel);
 });
+
+$('#autho').click(function(){
+    //TODO convert time to something less dumb
+    console.log('yes');
+    getAuthorization();
+});
+
 
 $(document).ready(function(){
     
