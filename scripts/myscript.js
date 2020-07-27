@@ -58,7 +58,8 @@ function openVod(info, time){
 
 function getTwitchID(name){
 
-    url = 'https://api.twitch.tv/helix/users?login=' + name;
+    url = 'https://api.twitch.tv/kraken/users?login=' + name;
+
 
     $.ajax({
         type:"GET",
@@ -79,16 +80,20 @@ function getTwitchID(name){
 };
 
 function getVodData(channel){
-    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.data[0].id + '&first=100';
+    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.users[0]._id + '&first=100';
 
     var searchTime = $('#timestamp').val();
         searchTime = new Date(searchTime).getTime();
+
+    var urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
+    let bearer = "Bearer " + urlParams.get('access_token');
 
     $.ajax({
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'sphrze7vu0w52xj352puzh4q1covnzv',
+            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f',
+            'Authorization': bearer,
         },
         async: true,
         dataType: "json",
@@ -102,30 +107,6 @@ function getVodData(channel){
     });
 };
 
-function getAuthorization(){
-
-    let url = "https://id.twitch.tv/oauth2/authorize";
-
-    $.ajax({
-        type:"GET",
-        url:url,
-        headers: {
-            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f',
-            'response_type':'code',
-            'redirect_uri':'file:///C:/Users/torre/Documents/webdev/twitchVodinker/twitchVodTime/index.html',
-
-        },
-        async: true,
-        dataType: "json",
-        success: function(data){
-            console.log(data);
-        },
-        error: function(errorMessage){
-            alert("not work lol");
-        }
-    });
-    
-};
 
 $('#submit').click(function(){
     //TODO convert time to something less dumb
@@ -133,12 +114,6 @@ $('#submit').click(function(){
     var twitchChannel = $('#twitch').val();
 
     getTwitchID(twitchChannel);
-});
-
-$('#autho').click(function(){
-    //TODO convert time to something less dumb
-    console.log('yes');
-    getAuthorization();
 });
 
 
