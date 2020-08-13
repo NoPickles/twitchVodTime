@@ -1,5 +1,5 @@
 
-function calcTime(vodInfo, searchT){
+function calcTime(vodInfo){
     //add endTime to data array.
     vodInfo.map(calcEndTime);
 
@@ -30,7 +30,6 @@ function findinVod(vodInfo){
 };
 
 function timeinVod(vodInfo, index){
-    console.log(vodInfo);
     var searchDuration = (vodInfo[index].searchEpoch - vodInfo[index].createdEpoc);
     var vodTime = msToTime(searchDuration);
     openVod(vodInfo, vodTime);
@@ -60,7 +59,6 @@ function getTwitchID(name){
 
     url = 'https://api.twitch.tv/kraken/users?login=' + name;
 
-
     $.ajax({
         type:"GET",
         url:url,
@@ -79,11 +77,14 @@ function getTwitchID(name){
     });
 };
 
-function getVodData(channel){
-    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.users[0]._id + '&first=100';
+//TODO Make vod search go to more than 100
 
-    var searchTime = $('#timestamp').val();
-        searchTime = new Date(searchTime).getTime();
+function getVodData(channel){
+    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.users[0]._id + '&first=100&type=archive';
+
+    var searchTime = getTime();
+
+    console.log('searchTime :' + searchTime);
 
     var urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
     let bearer = "Bearer " + urlParams.get('access_token');
@@ -92,19 +93,40 @@ function getVodData(channel){
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f',
+            'Client-ID':'5lc5424gjt8jqg5a5qezzluh0bwc4z',
             'Authorization': bearer,
         },
         async: true,
         dataType: "json",
         success: function(data){
             data.data.map(x => x.searchEpoch = searchTime);
-            var found = calcTime(data.data, searchTime);
+            calcTime(data.data);
         },
         error: function(errorMessage){
             alert("Error");
         }
     });
+};
+
+function getTime(){
+
+    let dateTime = $('#dateTime').val();
+    let doneTime;
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    let a = moment.tz(dateTime, tz); //moment format with timezone
+
+    let select = $('input[name=group1]:checked', '#timeForm').val();
+
+    if(select === 'local'){
+        doneTime = a.utc().format(); //Converts local time to UTC time
+    } else {
+        doneTime = dateTime + 'Z';
+    }
+
+    //Returns DoneTime in unix time miliseconds
+    return moment(doneTime).valueOf();
 };
 
 
