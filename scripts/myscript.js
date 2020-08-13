@@ -89,11 +89,12 @@ function getVodData(channel){
     var urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
     let bearer = "Bearer " + urlParams.get('access_token');
 
+
     $.ajax({
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'5lc5424gjt8jqg5a5qezzluh0bwc4z',
+            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f',
             'Authorization': bearer,
         },
         async: true,
