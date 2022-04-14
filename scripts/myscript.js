@@ -49,7 +49,7 @@ function msToTime(duration){
   };
 
 function openVod(info, time){
-    var index = info.findIndex(findinVod);
+    var index  = info.findIndex(findinVod);
     var vodURL = info[index].url;
 
     window.open(vodURL + "?t=" + time);
@@ -57,14 +57,17 @@ function openVod(info, time){
 
 function getTwitchID(name){
 
-    url = 'https://api.twitch.tv/kraken/users?login=' + name;
+    url = 'https://api.twitch.tv/helix/users?login=' + name;
+
+    let urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
+    let bearer = "Bearer " + urlParams.get('access_token');
 
     $.ajax({
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'sphrze7vu0w52xj352puzh4q1covnzv',
-            'Accept'   : 'application/vnd.twitchtv.v5+json'
+            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f', //CHANGE THIS !!!
+            'Authorization' : bearer,
         },
         async: true,
         dataType: "json",
@@ -94,13 +97,14 @@ function getVodData(channel){
         type:"GET",
         url:url,
         headers: {
-            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f',
+            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f', //!! CHANGE !!
             'Authorization': bearer,
         },
         async: true,
         dataType: "json",
         success: function(data){
             data.data.map(x => x.searchEpoch = searchTime);
+            console.log(data.data);
             calcTime(data.data);
         },
         error: function(errorMessage){
