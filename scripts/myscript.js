@@ -57,7 +57,7 @@ function openVod(info, time){
 
 function getTwitchID(name){
 
-    url = 'https://api.twitch.tv/kraken/users?login=' + name;
+    url = 'https://api.twitch.tv/helix/users?login=' + name;
 
     let urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
     let bearer = "Bearer " + urlParams.get('access_token');
