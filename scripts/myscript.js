@@ -72,6 +72,7 @@ function getTwitchID(name){
         async: true,
         dataType: "json",
         success: function(data){
+            console.log(data)
             getVodData(data);
         },
         error: function(errorMessage){
@@ -83,7 +84,7 @@ function getTwitchID(name){
 //TODO Make vod search go to more than 100
 
 function getVodData(channel){
-    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.users[0]._id + '&first=100&type=archive';
+    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.data[0].id + '&first=100&type=archive';
 
     var searchTime = getTime();
 
