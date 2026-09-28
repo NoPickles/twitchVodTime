@@ -1,150 +1,135 @@
+const CLIENT_ID = 'ky1r27xst71xcnslvvpegftytpi48f';
 
-function calcTime(vodInfo){
-    //add endTime to data array.
-    vodInfo.map(calcEndTime);
+// ---------- Twitch API ----------
 
-    var index = vodInfo.findIndex(findinVod);
+function getToken() {
+    const params = new URLSearchParams(window.location.hash.replace('#', '?'));
+    return params.get('access_token');
+}
 
-    timeinVod(vodInfo, index);
-};
-
-function calcEndTime(info){
-    var created = info.created_at;
-    var createdTime = new Date(created).getTime(); //Epoch time of vod create date
-
-    
-    var lengthVod = info.duration;
-        lengthVod = lengthVod.split(/[a-z]/);
-    
-    var miliLengthVod = (lengthVod[0] * 3600000) + (lengthVod[1] * 60000) + (lengthVod[2] * 1000);
-
-    var endedEpoc = createdTime + miliLengthVod;
-
-    info.durationMili = miliLengthVod;
-    info.endedEpoc = endedEpoc;
-    info.createdEpoc = createdTime;
-};
-
-function findinVod(vodInfo){
-    return(vodInfo.searchEpoch <= vodInfo.endedEpoc && vodInfo.searchEpoch >= vodInfo.createdEpoc);
-};
-
-function timeinVod(vodInfo, index){
-    var searchDuration = (vodInfo[index].searchEpoch - vodInfo[index].createdEpoc);
-    var vodTime = msToTime(searchDuration);
-    openVod(vodInfo, vodTime);
-};
-
-function msToTime(duration){
-    var milliseconds = parseInt((duration % 1000) / 100),
-      seconds = Math.floor((duration / 1000) % 60),
-      minutes = Math.floor((duration / (1000 * 60)) % 60),
-      hours   = Math.floor((duration / (1000 * 60 * 60)) % 24);
-  
-    hours   = (hours < 10) ? "0" + hours : hours;
-    minutes = (minutes < 10) ? "0" + minutes : minutes;
-    seconds = (seconds < 10) ? "0" + seconds : seconds;
-  
-    return hours + "h" + minutes + "m" + seconds + "s";
-  };
-
-function openVod(info, time){
-    var index  = info.findIndex(findinVod);
-    var vodURL = info[index].url;
-
-    window.open(vodURL + "?t=" + time);
-};
-
-function getTwitchID(name){
-
-    url = 'https://api.twitch.tv/helix/users?login=' + name;
-
-    let urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
-    let bearer = "Bearer " + urlParams.get('access_token');
-
-    $.ajax({
-        type:"GET",
-        url:url,
+function twitchGet(url) {
+    return $.ajax({
+        type: 'GET',
+        url: url,
+        dataType: 'json',
         headers: {
-            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f', //CHANGE THIS !!!
-            'Authorization' : bearer,
+            'Client-ID': CLIENT_ID,
+            'Authorization': 'Bearer ' + getToken(),
         },
-        async: true,
-        dataType: "json",
-        success: function(data){
-            console.log(data)
-            getVodData(data);
-        },
-        error: function(errorMessage){
-            alert("name error");
-        }
     });
-};
+}
 
-//TODO Make vod search go to more than 100
-
-function getVodData(channel){
-    var url = 'https://api.twitch.tv/helix/videos?user_id=' + channel.data[0].id + '&first=100&type=archive';
-
-    var searchTime = getTime();
-
-    console.log('searchTime :' + searchTime);
-
-    var urlParams = new URLSearchParams(window.location.hash.replace("#","?"));
-    let bearer = "Bearer " + urlParams.get('access_token');
-
-
-    $.ajax({
-        type:"GET",
-        url:url,
-        headers: {
-            'Client-ID':'ky1r27xst71xcnslvvpegftytpi48f', //!! CHANGE !!
-            'Authorization': bearer,
-        },
-        async: true,
-        dataType: "json",
-        success: function(data){
-            data.data.map(x => x.searchEpoch = searchTime);
-            console.log(data.data);
-            calcTime(data.data);
-        },
-        error: function(errorMessage){
-            alert("Error");
-        }
-    });
-};
-
-function getTime(){
-
-    let dateTime = $('#dateTime').val();
-    let doneTime;
-
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    let a = moment.tz(dateTime, tz); //moment format with timezone
-
-    let select = $('input[name=group1]:checked', '#timeForm').val();
-
-    if(select === 'local'){
-        doneTime = a.utc().format(); //Converts local time to UTC time
-    } else {
-        doneTime = dateTime + 'Z';
+async function getTwitchID(name) {
+    const data = await twitchGet(
+        'https://api.twitch.tv/helix/users?login=' + encodeURIComponent(name)
+    );
+    if (!data.data || data.data.length === 0) {
+        throw new Error('Channel "' + name + '" not found');
     }
+    return data.data[0].id;
+}
 
-    //Returns DoneTime in unix time miliseconds
-    return moment(doneTime).valueOf();
-};
+// Walks through pages of VODs (100 at a time) until one contains searchTime.
+async function findVod(userId, searchTime) {
+    let cursor = null;
 
+    while (true) {
+        let url = 'https://api.twitch.tv/helix/videos?user_id=' + userId +
+                  '&first=100&type=archive';
+        if (cursor) url += '&after=' + cursor;
 
-$('#submit').click(function(){
-    //TODO convert time to something less dumb
+        const page = await twitchGet(url);
+        const vods = page.data || [];
 
-    var twitchChannel = $('#twitch').val();
+        for (const vod of vods) {
+            const start = new Date(vod.created_at).getTime();
+            const end = start + parseDuration(vod.duration);
+            if (searchTime >= start && searchTime <= end) {
+                return { vod: vod, offsetMs: searchTime - start };
+            }
+        }
 
-    getTwitchID(twitchChannel);
-});
+        // VODs come newest-first, so once the oldest one on the page
+        // started before searchTime there's nothing older worth checking.
+        const oldest = vods[vods.length - 1];
+        const reachedEnd = !page.pagination || !page.pagination.cursor;
+        if (!oldest || reachedEnd || new Date(oldest.created_at).getTime() < searchTime) {
+            return null;
+        }
+        cursor = page.pagination.cursor;
+    }
+}
 
+// ---------- Time helpers ----------
 
-$(document).ready(function(){
-    
+// Twitch durations look like "3h25m10s", "45m10s", "10s", "1h5m" ...
+function parseDuration(str) {
+    const m = /(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/.exec(str);
+    const h = Number(m[1] || 0);
+    const min = Number(m[2] || 0);
+    const s = Number(m[3] || 0);
+    return (h * 3600 + min * 60 + s) * 1000;
+}
+
+function msToTime(ms) {
+    const total = Math.floor(ms / 1000);
+    const h = Math.floor(total / 3600);       // no % 24, VODs can run past a day
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return h + 'h' + m + 'm' + s + 's';
+}
+
+// Returns the entered time as epoch milliseconds (NaN if empty/invalid).
+function getTime() {
+    const dateTime = $('#dateTime').val();
+    if (!dateTime) return NaN;
+
+    const mode = $('input[name=group1]:checked', '#timeForm').val();
+    console.log('time mode radio value:', mode);
+
+    // Only treat the input as UTC if the UTC option is explicitly selected;
+    // anything else (including nothing checked) is local time.
+    const isUtc = typeof mode === 'string' && mode.toLowerCase() === 'utc';
+    const parsed = isUtc ? moment.utc(dateTime) : moment(dateTime);
+
+    console.log('input:', dateTime, '| treated as:', isUtc ? 'UTC' : 'local',
+                '| = UTC', parsed.clone().utc().format());
+    return parsed.valueOf();
+}
+
+// ---------- UI ----------
+
+$('#submit').click(async function (e) {
+    e.preventDefault(); // if the button is in a form, a submit would reload and lose the #access_token
+
+    const channel = $('#twitch').val().trim();
+    const searchTime = getTime();
+
+    if (!channel) return alert('Enter a channel name');
+    if (isNaN(searchTime)) return alert('Enter a valid date/time');
+    if (!getToken()) return alert('Not logged in to Twitch (no access token in URL)');
+
+    // Open the tab now, inside the click, so popup blockers allow it.
+    // We point it at the VOD once the async lookups finish.
+    const win = window.open('', '_blank');
+
+    try {
+        const userId = await getTwitchID(channel);
+        const result = await findVod(userId, searchTime);
+
+        if (!result) {
+            if (win) win.close();
+            return alert('No VOD found for that channel at that time');
+        }
+
+        const url = result.vod.url + '?t=' + msToTime(result.offsetMs);
+        if (win) win.location.href = url;
+        else window.location.href = url;
+    } catch (err) {
+        if (win) win.close();
+        console.error(err);
+        alert(err.status === 401
+            ? 'Twitch auth failed. Log in again.'
+            : (err.message || 'Request failed'));
+    }
 });
