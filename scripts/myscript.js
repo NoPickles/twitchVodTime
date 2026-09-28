@@ -81,8 +81,13 @@ function msToTime(ms) {
 
 // Returns the entered time as epoch milliseconds (NaN if empty/invalid).
 function getTime() {
-    const dateTime = $('#dateTime').val();
-    if (!dateTime) return NaN;
+    const date = $('#date').val();            // YYYY-MM-DD from <input type="date">
+    let time = $('#time').val().trim();       // 24-hour HH:mm or HH:mm:ss
+    if (!date || !/^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(time)) return NaN;
+
+    if (time.split(':').length === 2) time += ':00';
+    if (time.indexOf(':') === 1) time = '0' + time;   // 9:05:00 -> 09:05:00
+    const dateTime = date + 'T' + time;
 
     const mode = $('input[name=group1]:checked', '#timeForm').val();
     console.log('time mode radio value:', mode);
